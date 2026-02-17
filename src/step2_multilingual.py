@@ -25,21 +25,21 @@ def load_spacy_model(language):
         raise ValueError(f"Unsupported language: {language}")
 
 
-def analyze_text_for_pii(text, nlp_model):
+def analyze_text_for_pii(text, language):
     """Analyze text for PII using Presidio."""
-    results = analyzer.analyze(text=text, language="en")
+    results = analyzer.analyze(text=text, language=language)
     pii_data = [{"text_row_number": res.start, "column_number": res.end, "pii_type": res.entity_type,
                  "value": text[res.start:res.end]} for res in results]
     return pii_data
 
 
-def process_page(page_data, nlp_model, output_dir):
+def process_page(page_data, language, output_dir):
     """Process each page, analyze for PII, and save to a separate file."""
     page_number = page_data["page_number"]
     page_text = page_data['content']
 
     # PII analysis
-    pii_data = analyze_text_for_pii(page_text, nlp_model)
+    pii_data = analyze_text_for_pii(page_text, language)
 
     # Save the PII results to a file
     output_file = f"{output_dir}/page_{page_number}_pii.json"
@@ -115,7 +115,7 @@ def main():
     # Use ThreadPoolExecutor for parallel processing of pages
     with ThreadPoolExecutor() as executor:
         # Process each page concurrently
-        futures = [executor.submit(process_page, page_data, nlp_model, output_dir) for page_data in pages]
+        futures = [executor.submit(process_page, page_data, detected_language or "en", output_dir) for page_data in pages]
         result_files = [future.result() for future in futures]
 
     # After processing all pages, merge the results into one file
