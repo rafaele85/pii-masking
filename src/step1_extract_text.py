@@ -25,22 +25,23 @@ def save_text_to_json(pages, output_path):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python step1_extract_text.py <pdf_path>")
+    if len(sys.argv) != 3:
+        print("Usage: python step1_extract_text.py <pdf_path> <output_file_path>")
         sys.exit(1)
 
     pdf_path = sys.argv[1]
-    output_dir = "output/step1"
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "extracted_text.json")
+    output_file_path = sys.argv[2]
+
+    # Ensure the output directory exists
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
     print(f"Extracting text from {pdf_path}...")
 
     # Extract and save text as JSON
     pages = extract_text_from_pdf(pdf_path)
-    save_text_to_json(pages, output_path)
+    save_text_to_json(pages, output_file_path)
 
-    print(f"Text saved to {output_path}")
+    print(f"Text saved to {output_file_path}")
 
 
 if __name__ == "__main__":
