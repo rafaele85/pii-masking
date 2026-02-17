@@ -2,7 +2,7 @@ import json
 import sys
 from pathlib import Path
 from multiprocessing import Pool, set_start_method
-import torch
+
 
 from pii_detector.text_analyzer import init_worker, analyze_text
 
@@ -19,8 +19,9 @@ def analyze_extracted_text(step1_file: Path, output_dir: Path, num_gpus: int = 3
 
     set_start_method("spawn", force=True)
 
-    # Create one worker per GPU
-    with Pool(processes=num_gpus, initializer=init_worker, initargs=(0,)) as pool:
+    # Create pool without initializer, pass GPU ID with each task
+    with Pool(processes=num_gpus) as pool:
+        # Map tasks to workers - each worker will init itself on first call
         results = pool.map(analyze_text, pages_data)
 
     # Update data

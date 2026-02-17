@@ -1,16 +1,23 @@
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern, RecognizerRegistry
 import spacy
 import torch
+import os
 
 # Worker globals
 _nlp = None
 _analyzer = None
+_initialized = False
+_worker_id = None
 
 
-def init_worker(gpu_id):
-    """Initialize worker with specific GPU."""
-    global _nlp, _analyzer
+def init_on_gpu(gpu_id):
+    """Initialize on specific GPU."""
+    global _nlp, _analyzer, _initialized, _worker_id
 
+    if _initialized:
+        return
+
+    _worker_id = gpu_id
     torch.cuda.set_device(gpu_id)
     _nlp = spacy.load("en_core_web_trf")
 
@@ -28,12 +35,20 @@ def init_worker(gpu_id):
     _analyzer.registry.add_recognizer(cc_recognizer)
     _analyzer.registry.add_recognizer(phone_recognizer)
 
-    print(f"Worker on GPU {gpu_id} ready")
+    _initialized = True
+    print(f"Worker initialized on GPU {gpu_id}")
 
 
 def analyze_text(args):
     """Analyze text. args = (page_num, text, gpu_id)."""
     page_num, text, gpu_id = args
+
+    # Initialize on first call
+    init_on_gpu(gpu_id)
+
+    # Progress log every 10 pages
+    if page_num % 10 == 0:
+        print(f"  GPU {gpu_id} processing page {page_num}")
 
     if not text or len(text.strip()) == 0:
         return {"page_number": page_num, "detections": []}
