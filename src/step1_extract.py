@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import fitz
 
+
 def extract_pdf_text(pdf_path: str, output_dir: Path) -> Path:
     """Step 1: Extract text from PDF and save to output/step1/."""
     doc = fitz.open(pdf_path)
@@ -19,7 +20,6 @@ def extract_pdf_text(pdf_path: str, output_dir: Path) -> Path:
 
     doc.close()
 
-    # Save to output/step1/
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"{Path(pdf_path).stem}_text.json"
 
@@ -38,7 +38,7 @@ def extract_pdf_text(pdf_path: str, output_dir: Path) -> Path:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         pdf_path = sys.argv[1]
-        output_path = extract_pdf_text(pdf_path, Path("output/step1"))
-        print(f"Saved: {output_path}")
+        step1_file = extract_pdf_text(pdf_path, Path("output/step1"))
+        print(f"Step 1 saved: {step1_file}")
     else:
-        print("Usage: python phase1_pipeline.py <pdf_path>")
+        print("Usage: python step1_extract.py <pdf_path>")

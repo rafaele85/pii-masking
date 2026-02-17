@@ -1,7 +1,11 @@
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern, RecognizerRegistry
 import spacy
 
-nlp = spacy.load("en_core_web_trf")
+nlp = spacy.load("en_core_web_lg")
 
 cc_pattern = Pattern(name="credit_card", regex=r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", score=0.9)
 phone_pattern = Pattern(name="phone", regex=r"\b\d{3}[-.]?\d{4}\b", score=0.8)
@@ -19,9 +23,12 @@ analyzer.registry.add_recognizer(phone_recognizer)
 
 
 def analyze_text(text: str) -> list:
+    """Analyze text with Presidio + spaCy NER."""
+    if not text or len(text.strip()) == 0:
+        return []
+
     detections = []
 
-    # Presidio
     for r in analyzer.analyze(text=text, language="en"):
         detections.append({
             "type": r.entity_type,
@@ -32,8 +39,7 @@ def analyze_text(text: str) -> list:
             "source": "presidio"
         })
 
-    # spaCy NER
-    doc = nlp(text)
+    doc = nlp(text[:100000])
     for ent in doc.ents:
         if ent.label_ in ["PERSON", "ORG", "GPE", "LOC"]:
             detections.append({
@@ -45,18 +51,10 @@ def analyze_text(text: str) -> list:
                 "source": "spacy"
             })
 
-    # Deduplicate: keep highest score per position
-    seen = {}  # key: (start, end) -> detection
+    seen = {}
     for d in detections:
         key = (d["start"], d["end"])
         if key not in seen or d["score"] > seen[key]["score"]:
             seen[key] = d
 
     return list(seen.values())
-
-
-# Test
-text = "John Smith from Microsoft visited London. Contact him at john.smith@email.com or 555-1234. CC: 4532-1234-5678-9012"
-results = analyze_text(text)
-for r in results:
-    print(f"{r['type']}: {r['text']} (score: {r['score']}, source: {r['source']})")
