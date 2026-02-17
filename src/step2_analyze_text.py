@@ -7,6 +7,9 @@ import spacy
 analyzer = AnalyzerEngine()
 nlp = spacy.load("en_core_web_trf")
 
+# Increase spaCy max_length to handle larger texts, but still mindful of memory usage
+nlp.max_length = 1500000  # Allow longer texts, up to ~1.5 million characters
+
 
 def analyze_text_for_pii(text):
     """Analyze text for PII using Presidio and spaCy."""
@@ -23,10 +26,10 @@ def analyze_text_for_pii(text):
     return pii_data
 
 
-def read_text_file(input_file):
-    """Read the text from a file."""
+def read_json_file(input_file):
+    """Read the JSON file containing extracted text."""
     with open(input_file, "r", encoding="utf-8") as file:
-        return file.read()
+        return json.load(file)
 
 
 def save_pii_to_file(pii_data, output_file):
@@ -35,21 +38,32 @@ def save_pii_to_file(pii_data, output_file):
         json.dump(pii_data, file, ensure_ascii=False, indent=4)
 
 
+def analyze_page_for_pii(page_data):
+    """Analyze a single page's text for PII."""
+    page_text = page_data['content']
+    return analyze_text_for_pii(page_text)
+
+
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python step2_analyze_pii.py <extracted_text_file>")
+    if len(sys.argv) != 3:
+        print("Usage: python step2_analyze_pii.py <extracted_text_file> <output_file>")
         sys.exit(1)
 
     input_file = sys.argv[1]
-    output_file = "output/step2/pii_results.json"
+    output_file = sys.argv[2]
 
     print(f"Reading text from {input_file} and analyzing for PII...")
 
-    # Read the extracted text file
-    text = read_text_file(input_file)
+    # Read the JSON file containing extracted text
+    pages = read_json_file(input_file)
 
-    # Analyze for PII
-    pii_data = analyze_text_for_pii(text)
+    pii_data = []
+
+    # Analyze each page one at a time
+    for page_data in pages:
+        print(f"Analyzing page {page_data['page_number']}...")
+        page_pii = analyze_page_for_pii(page_data)
+        pii_data.extend(page_pii)
 
     # Save results to file
     save_pii_to_file(pii_data, output_file)
