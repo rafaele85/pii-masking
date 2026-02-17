@@ -90,10 +90,17 @@ def main():
     first_page_text = pages[0]['content']
     sys.stdout.flush()
 
-    print(f"First page text length: {len(first_page_text)}")
-    print(f"First page preview: {first_page_text[:100]}")
-    detected_language = detect(first_page_text)
+    detected_language = None
+    for page in pages:
+        text = page['content'].strip()
+        if len(text) > 50:
+            detected_language = detect(text)
+            print(f"Detected language '{detected_language}' from page {page['page_number']}")
+            break
 
+    if not detected_language:
+        print("Error: No pages with sufficient text found")
+        sys.exit(1)
     # Print detected language (before parallel processing starts)
     print(f"Detected language for the document: {detected_language}")
     sys.stdout.flush()  # Ensure the print statement is flushed immediately to the console
