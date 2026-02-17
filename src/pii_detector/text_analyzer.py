@@ -2,33 +2,46 @@ from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern, Recogn
 import spacy
 import torch
 
-# Don't use spacy.require_gpu(), let transformers use PyTorch GPU
-print(f"PyTorch GPU available: {torch.cuda.is_available()}")
-if torch.cuda.is_available():
-    print(f"Using GPU: {torch.cuda.get_device_name(0)}")
-
-# Load transformer model - it will use PyTorch GPU automatically
-nlp = spacy.load("en_core_web_trf")
-
-cc_pattern = Pattern(name="credit_card", regex=r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", score=0.9)
-phone_pattern = Pattern(name="phone", regex=r"\b\d{3}[-.]?\d{4}\b", score=0.8)
-
-cc_recognizer = PatternRecognizer(supported_entity="CREDIT_CARD", patterns=[cc_pattern])
-phone_recognizer = PatternRecognizer(supported_entity="PHONE_NUMBER", patterns=[phone_pattern])
-
-registry = RecognizerRegistry()
-registry.load_predefined_recognizers()
-registry.recognizers = [r for r in registry.recognizers if r.name not in ["DateTimeRecognizer", "UrlRecognizer"]]
-
-analyzer = AnalyzerEngine(registry=registry)
-analyzer.registry.add_recognizer(cc_recognizer)
-analyzer.registry.add_recognizer(phone_recognizer)
+# Global variables set per process
+nlp = None
+analyzer = None
+device_id = None
 
 
-def analyze_text(text: str) -> list:
-    """Analyze text with Presidio + spaCy NER."""
+def init_worker(gpu_id):
+    """Initialize worker with specific GPU."""
+    global nlp, analyzer, device_id
+    device_id = gpu_id
+
+    # Set CUDA device for this process
+    torch.cuda.set_device(gpu_id)
+
+    # Load spaCy model on this GPU
+    nlp = spacy.load("en_core_web_trf")
+
+    # Initialize Presidio
+    cc_pattern = Pattern(name="credit_card", regex=r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", score=0.9)
+    phone_pattern = Pattern(name="phone", regex=r"\b\d{3}[-.]?\d{4}\b", score=0.8)
+
+    cc_recognizer = PatternRecognizer(supported_entity="CREDIT_CARD", patterns=[cc_pattern])
+    phone_recognizer = PatternRecognizer(supported_entity="PHONE_NUMBER", patterns=[phone_pattern])
+
+    registry = RecognizerRegistry()
+    registry.load_predefined_recognizers()
+    registry.recognizers = [r for r in registry.recognizers if r.name not in ["DateTimeRecognizer", "UrlRecognizer"]]
+
+    analyzer = AnalyzerEngine(registry=registry)
+    analyzer.registry.add_recognizer(cc_recognizer)
+    analyzer.registry.add_recognizer(phone_recognizer)
+
+    print(f"Worker initialized on GPU {gpu_id}")
+
+
+def analyze_text_worker(args):
+    """Analyze text on assigned GPU."""
+    page_num, text = args
     if not text or len(text.strip()) == 0:
-        return []
+        return {"page_number": page_num, "detections": []}
 
     detections = []
 
@@ -43,7 +56,7 @@ def analyze_text(text: str) -> list:
             "source": "presidio"
         })
 
-    # spaCy NER (GPU via PyTorch)
+    # spaCy NER (GPU)
     doc = nlp(text[:50000])
     for ent in doc.ents:
         if ent.label_ in ["PERSON", "ORG", "GPE", "LOC"]:
@@ -56,10 +69,11 @@ def analyze_text(text: str) -> list:
                 "source": "spacy"
             })
 
+    # Deduplicate
     seen = {}
     for d in detections:
         key = (d["start"], d["end"])
         if key not in seen or d["score"] > seen[key]["score"]:
             seen[key] = d
 
-    return list(seen.values())
+    return {"page_number": page_num, "detections": list(seen.values())}
