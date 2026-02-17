@@ -1,7 +1,7 @@
 import json
 import sys
 from pathlib import Path
-from pii_detector.text_analyzer import analyze_single_text
+from pii_detector.text_analyzer import analyze_text
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 
@@ -9,7 +9,7 @@ import multiprocessing
 def analyze_page(page_data: dict) -> dict:
     """Analyze a single page (for multiprocessing)."""
     page_num, text = page_data
-    detections = analyze_single_text(text) if text.strip() else []
+    detections = analyze_text(text) if text.strip() else []
     return {
         "page_number": page_num,
         "detections": detections
