@@ -7,6 +7,4 @@ pathy==0.11.0
 pipdeptree==2.30.0
 presidio-analyzer==2.2.35
 PyMuPDF==1.27.1
-torchaudio==2.8.0.dev20250911+cu128
-torchvision==0.24.0.dev20250911+cu128
 wrapt==2.1.1
