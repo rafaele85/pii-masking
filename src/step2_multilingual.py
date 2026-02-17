@@ -88,6 +88,10 @@ def main():
 
     # Detect language from the first page's text (in the main thread)
     first_page_text = pages[0]['content']
+    sys.stdout.flush()
+
+    print(f"First page text length: {len(first_page_text)}")
+    print(f"First page preview: {first_page_text[:100]}")
     detected_language = detect(first_page_text)
 
     # Print detected language (before parallel processing starts)
