@@ -1,9 +1,10 @@
 import sys
 import json
+import os
+import spacy
 from langdetect import detect
 from presidio_analyzer import AnalyzerEngine
-import spacy
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 # Initialize Presidio analyzer
 analyzer = AnalyzerEngine()
@@ -32,21 +33,19 @@ def analyze_text_for_pii(text, nlp_model):
     return pii_data
 
 
-def analyze_page_for_pii(page_data):
-    """Analyze a single page's text for PII, auto-detect language."""
+def process_page(page_data, nlp_model, output_dir):
+    """Process each page, analyze for PII, and save to a separate file."""
+    page_number = page_data["page_number"]
     page_text = page_data['content']
 
-    # Detect the language of the page's text
-    language = detect(page_text)
+    # PII analysis
+    pii_data = analyze_text_for_pii(page_text, nlp_model)
 
-    # Print the detected language
-    print(f"Detected language for page {page_data['page_number']}: {language}")
+    # Save the PII results to a file
+    output_file = f"{output_dir}/page_{page_number}_pii.json"
+    save_pii_to_file(pii_data, output_file)
 
-    # Load the appropriate spaCy model based on the detected language
-    nlp_model = load_spacy_model(language)
-
-    # Run PII analysis
-    return analyze_text_for_pii(page_text, nlp_model)
+    return output_file
 
 
 def read_json_file(input_file):
@@ -59,18 +58,6 @@ def save_pii_to_file(pii_data, output_file):
     """Save PII analysis results to a file."""
     with open(output_file, "w", encoding="utf-8") as file:
         json.dump(pii_data, file, ensure_ascii=False, indent=4)
-
-
-def process_page(page_data, output_dir):
-    """Process each page, analyze for PII, and save to a separate file."""
-    page_number = page_data["page_number"]
-    pii_data = analyze_page_for_pii(page_data)
-
-    # Save the PII results to a file
-    output_file = f"{output_dir}/page_{page_number}_pii.json"
-    save_pii_to_file(pii_data, output_file)
-
-    return output_file
 
 
 def merge_json_files(file_paths, output_file):
@@ -99,10 +86,24 @@ def main():
     # Read the extracted text JSON file
     pages = read_json_file(input_file)
 
-    # Use ProcessPoolExecutor for parallel processing
-    with ProcessPoolExecutor() as executor:
+    # Detect language from the first page's text
+    first_page_text = pages[0]['content']
+    detected_language = detect(first_page_text)
+
+    # Print detected language
+    print(f"Detected language for the document: {detected_language}")
+
+    # Load spaCy model based on detected language
+    try:
+        nlp_model = load_spacy_model(detected_language)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    # Use ThreadPoolExecutor for parallel processing
+    with ThreadPoolExecutor() as executor:
         # Process each page concurrently
-        futures = [executor.submit(process_page, page_data, output_dir) for page_data in pages]
+        futures = [executor.submit(process_page, page_data, nlp_model, output_dir) for page_data in pages]
         result_files = [future.result() for future in futures]
 
     # After processing all pages, merge the results into one file
