@@ -1,11 +1,13 @@
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern, RecognizerRegistry
 import spacy
+import torch
 
-# Enable GPU for spaCy
-spacy.require_gpu()
-print("spaCy using GPU")
+# Don't use spacy.require_gpu(), let transformers use PyTorch GPU
+print(f"PyTorch GPU available: {torch.cuda.is_available()}")
+if torch.cuda.is_available():
+    print(f"Using GPU: {torch.cuda.get_device_name(0)}")
 
-# Load transformer model
+# Load transformer model - it will use PyTorch GPU automatically
 nlp = spacy.load("en_core_web_trf")
 
 cc_pattern = Pattern(name="credit_card", regex=r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", score=0.9)
@@ -41,7 +43,7 @@ def analyze_text(text: str) -> list:
             "source": "presidio"
         })
 
-    # spaCy NER (GPU)
+    # spaCy NER (GPU via PyTorch)
     doc = nlp(text[:50000])
     for ent in doc.ents:
         if ent.label_ in ["PERSON", "ORG", "GPE", "LOC"]:
