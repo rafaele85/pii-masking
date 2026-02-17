@@ -1,6 +1,7 @@
 import sys
 import json
 import os
+import logging
 from concurrent.futures import ProcessPoolExecutor
 from langdetect import detect
 from presidio_analyzer import AnalyzerEngine
@@ -8,6 +9,12 @@ import spacy
 
 # Initialize Presidio analyzer
 analyzer = AnalyzerEngine()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', handlers=[
+    logging.FileHandler("language_detection.log"),
+    logging.StreamHandler()
+])
 
 # Increase spaCy max_length to handle larger texts
 spacy.util.fix_random_seed(42)
@@ -45,6 +52,9 @@ def analyze_page_for_pii(page_data):
 
     # Auto-detect language using langdetect
     language = detect(page_text)
+
+    # Log the detected language
+    logging.info(f"Detected language for page {page_data['page_number']}: {language}")
 
     # Load appropriate spaCy model based on the detected language
     nlp_model = load_spacy_model(language)
