@@ -86,12 +86,13 @@ def main():
     # Read the extracted text JSON file
     pages = read_json_file(input_file)
 
-    # Detect language from the first page's text
+    # Detect language from the first page's text (in the main thread)
     first_page_text = pages[0]['content']
     detected_language = detect(first_page_text)
 
-    # Print detected language
+    # Print detected language (before parallel processing starts)
     print(f"Detected language for the document: {detected_language}")
+    sys.stdout.flush()  # Ensure the print statement is flushed immediately to the console
 
     # Load spaCy model based on detected language
     try:
@@ -100,7 +101,7 @@ def main():
         print(f"Error: {e}")
         sys.exit(1)
 
-    # Use ThreadPoolExecutor for parallel processing
+    # Use ThreadPoolExecutor for parallel processing of pages
     with ThreadPoolExecutor() as executor:
         # Process each page concurrently
         futures = [executor.submit(process_page, page_data, nlp_model, output_dir) for page_data in pages]
