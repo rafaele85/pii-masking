@@ -1,11 +1,10 @@
-import os
-
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern, RecognizerRegistry
 import spacy
+from concurrent.futures import ProcessPoolExecutor
+import os
 
-nlp = spacy.load("en_core_web_lg")
+# CPU only for now
+nlp = spacy.load("en_core_web_lg")  # Use faster lg model
 
 cc_pattern = Pattern(name="credit_card", regex=r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", score=0.9)
 phone_pattern = Pattern(name="phone", regex=r"\b\d{3}[-.]?\d{4}\b", score=0.8)
@@ -22,13 +21,14 @@ analyzer.registry.add_recognizer(cc_recognizer)
 analyzer.registry.add_recognizer(phone_recognizer)
 
 
-def analyze_text(text: str) -> list:
-    """Analyze text with Presidio + spaCy NER."""
+def analyze_single_text(text: str) -> list:
+    """Analyze one text block."""
     if not text or len(text.strip()) == 0:
         return []
 
     detections = []
 
+    # Presidio
     for r in analyzer.analyze(text=text, language="en"):
         detections.append({
             "type": r.entity_type,
@@ -39,6 +39,7 @@ def analyze_text(text: str) -> list:
             "source": "presidio"
         })
 
+    # spaCy
     doc = nlp(text[:100000])
     for ent in doc.ents:
         if ent.label_ in ["PERSON", "ORG", "GPE", "LOC"]:
@@ -51,6 +52,7 @@ def analyze_text(text: str) -> list:
                 "source": "spacy"
             })
 
+    # Deduplicate
     seen = {}
     for d in detections:
         key = (d["start"], d["end"])
@@ -58,3 +60,8 @@ def analyze_text(text: str) -> list:
             seen[key] = d
 
     return list(seen.values())
+
+
+def analyze_text(text: str) -> list:
+    """Wrapper for single text (backward compatibility)."""
+    return analyze_single_text(text)
