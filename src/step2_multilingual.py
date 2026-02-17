@@ -27,7 +27,7 @@ def load_spacy_model(language):
 
 def analyze_text_for_pii(text, language):
     """Analyze text for PII using Presidio."""
-    results = analyzer.analyze(text=text, language=language)
+    results = analyzer.analyze(text=text, language=language, score_threshold=0.7)
     pii_data = [{"text_row_number": res.start, "column_number": res.end, "pii_type": res.entity_type,
                  "value": text[res.start:res.end]} for res in results]
     return pii_data
