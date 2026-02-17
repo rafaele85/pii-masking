@@ -1,27 +1,19 @@
 import sys
 import json
-import os
-import logging
-from concurrent.futures import ProcessPoolExecutor
 from langdetect import detect
 from presidio_analyzer import AnalyzerEngine
 import spacy
+from concurrent.futures import ProcessPoolExecutor
 
 # Initialize Presidio analyzer
 analyzer = AnalyzerEngine()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', handlers=[
-    logging.FileHandler("language_detection.log"),
-    logging.StreamHandler()
-])
 
 # Increase spaCy max_length to handle larger texts
 spacy.util.fix_random_seed(42)
 
 
 def load_spacy_model(language):
-    """Load appropriate spaCy model based on the detected language."""
+    """Load spaCy model based on the detected language."""
     if language == 'en':
         return spacy.load("en_core_web_trf")
     elif language == 'bg':
@@ -33,16 +25,10 @@ def load_spacy_model(language):
 
 
 def analyze_text_for_pii(text, nlp_model):
-    """Analyze text for PII using Presidio and spaCy."""
+    """Analyze text for PII using Presidio."""
     results = analyzer.analyze(text=text, language="en")
-    pii_data = []
-    for res in results:
-        pii_data.append({
-            "text_row_number": res.start,
-            "column_number": res.end,
-            "pii_type": res.entity_type,
-            "value": text[res.start:res.end]
-        })
+    pii_data = [{"text_row_number": res.start, "column_number": res.end, "pii_type": res.entity_type,
+                 "value": text[res.start:res.end]} for res in results]
     return pii_data
 
 
@@ -50,13 +36,13 @@ def analyze_page_for_pii(page_data):
     """Analyze a single page's text for PII, auto-detect language."""
     page_text = page_data['content']
 
-    # Auto-detect language using langdetect
+    # Detect the language of the page's text
     language = detect(page_text)
 
-    # Log the detected language
-    logging.info(f"Detected language for page {page_data['page_number']}: {language}")
+    # Print the detected language
+    print(f"Detected language for page {page_data['page_number']}: {language}")
 
-    # Load appropriate spaCy model based on the detected language
+    # Load the appropriate spaCy model based on the detected language
     nlp_model = load_spacy_model(language)
 
     # Run PII analysis
@@ -80,8 +66,8 @@ def process_page(page_data, output_dir):
     page_number = page_data["page_number"]
     pii_data = analyze_page_for_pii(page_data)
 
-    # Create a separate JSON file for each page's results
-    output_file = os.path.join(output_dir, f"page_{page_number}_pii.json")
+    # Save the PII results to a file
+    output_file = f"{output_dir}/page_{page_number}_pii.json"
     save_pii_to_file(pii_data, output_file)
 
     return output_file
