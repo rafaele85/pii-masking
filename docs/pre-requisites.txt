@@ -1,0 +1,131 @@
+?? 1?? Core System Requirements
+? Windows 11 (latest updates)
+? NVIDIA Driver (latest Studio or Game Ready)
+
+Verify CUDA works:
+
+nvidia-smi
+
+?? 2?? Node.js + TypeScript Environment
+Install:
+
+Node.js LTS (20+)
+
+From: https://nodejs.org
+
+Verify:
+
+node -v
+npm -v
+
+Install Global Dev Tools
+npm install -g typescript
+npm install -g ts-node
+npm install -g pnpm
+
+
+Verify:
+
+tsc -v
+
+?? 3?? Ollama (Local LLM Runtime)
+
+Download Windows installer from:
+
+https://ollama.com
+
+Verify:
+
+ollama --version
+
+
+Test model:
+
+ollama pull qwen2.5:7b-instruct
+ollama run qwen2.5:7b-instruct
+
+
+Later you may switch to:
+
+qwen2.5:14b
+
+mistral
+
+llama3
+
+No Python needed for inference.
+
+?? 4?? Database (Human Feedback Storage)
+Install PostgreSQL (recommended)
+
+Download from:
+https://www.postgresql.org/download/windows/
+
+During install:
+
+Remember password
+
+Default port 5432 is fine
+
+Verify:
+
+psql --version
+
+
+Optional GUI:
+
+pgAdmin (included)
+
+?? 5?? Python (Fine-Tuning Component – Optional for Now)
+
+Install:
+
+Python 3.11 (not 3.12 yet — ecosystem safer)
+
+From https://python.org
+
+During install:
+? Add to PATH
+
+Verify:
+
+python --version
+
+
+Install base ML stack:
+
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install transformers datasets peft accelerate bitsandbytes
+
+
+(This is for future LoRA fine-tuning.)
+
+?? 6?? Git
+
+Install:
+https://git-scm.com/download/win
+
+Verify:
+
+git --version
+
+?? 7?? Project Dependencies (Node)
+
+Inside your project later:
+
+pnpm init
+pnpm add pdf-parse pdfjs-dist cheerio
+pnpm add zod
+pnpm add axios
+pnpm add pg
+pnpm add dotenv
+pnpm add uuid
+
+
+Dev deps:
+
+pnpm add -D typescript ts-node @types/node
+
+?? 8?? Recommended Tools
+VSCode or WebStorm (you already use WebStorm)
+Postman (optional for LLM HTTP testing)

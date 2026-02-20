@@ -1,0 +1,8 @@
+FROM qwen3:14b
+PARAMETER num_ctx 8192
+TEMPLATE """{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
+<think>
+</think>
+"""
